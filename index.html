@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viva Plants - Dashboard</title>
+    <meta name="description" content="A calm, airy plant care companion app.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f2f1f">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Today</h1>
+            <p class="subtitle">Your sanctuary is thriving. 3 plants need attention.</p>
+        </header>
+
+        <main>
+            <section aria-labelledby="attention-title">
+                <h2 id="attention-title" class="section-title">Needs attention</h2>
+                <div id="attention-plants" class="cards-list"></div>
+            </section>
+
+            <section aria-labelledby="all-plants-title">
+                <h2 id="all-plants-title" class="section-title">All plants</h2>
+                <div id="all-plants-grid" class="plants-grid"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="db.js"></script>
+    <script src="plants.js"></script>
+    <script src="app.js"></script>
+
+    <div class="bottom-dock">
+        <button id="add-plant-btn" class="fab">+</button>
+    </div>
+
+    <div id="add-plant-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add a Plant</h3>
+                <button id="close-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <p class="modal-subtitle">Keep track of a new green friend.</p>
+
+            <label class="modal-label">Image</label>
+            <div class="photo-buttons">
+                <button id="btn-choose-photo" class="btn-outline btn-choose">Choose image</button>
+                <button id="btn-take-photo" class="btn-outline btn-camera" title="Take photo">📷</button>
+            </div>
+            <input id="plant-image-file" type="file" accept="image/*" class="modal-input" style="display: none;" />
+
+            <label class="modal-label">Name & Location</label>
+            <input id="plant-name" placeholder="Plant name (e.g. Fiddle Leaf Fig)" class="modal-input" />
+            <input id="plant-location" placeholder="Location (e.g. Living Room)" class="modal-input" />
+
+            <label class="modal-label">Details</label>
+            <input id="plant-type" placeholder="Plant type (e.g. Succulent)" class="modal-input" />
+            <label class="modal-label">Soil preference</label>
+            <select id="plant-preference" class="modal-input">
+                <option value="" disabled selected>Select preference</option>
+                <option value="moist">Keep soil slightly moist (💧)</option>
+                <option value="moderate">Let top soil dry out (🪴)</option>
+                <option value="dry">Allow soil to fully dry (🌵)</option>
+            </select>
+            <p class="modal-helper">This helps you decide when to water when the reminder appears.</p>
+
+            <label class="modal-label">How often should this plant be watered?</label>
+            <input id="plant-frequency" type="number" placeholder="Water every X days" class="modal-input" />
+
+            <label class="modal-label">Last Watered</label>
+            <input id="plant-last-watered" type="date" class="modal-input" />
+
+            <button id="save-plant" class="btn-primary">Save Plant</button>
+            <button id="delete-plant-btn" class="btn-secondary" style="display: none;">Delete Plant</button>
+        </div>
+    </div>
+</body>
+
+</html>
