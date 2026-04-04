@@ -9,7 +9,7 @@ function getDefaultPlants() {
             image: "https://images.unsplash.com/photo-1545241047-6083a3684587"
         },
         {
-            id: "plant_4",
+            id: "plant_2",
             name: "Aloe Vera",
             lastWatered: "2026-03-28",
             frequency: 12,

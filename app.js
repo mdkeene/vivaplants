@@ -12,6 +12,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     renderAllPlants();
     renderAttentionPlants();
+
+    if (!localStorage.getItem("viva_onboarding_complete")) {
+        document.getElementById("onboarding-overlay").classList.remove("hidden");
+        document.body.classList.add("modal-open");
+    }
+
+    document.getElementById("finish-onboarding-btn").onclick = () => {
+        localStorage.setItem("viva_onboarding_complete", "true");
+        document.getElementById("onboarding-overlay").classList.add("hidden");
+        document.body.classList.remove("modal-open");
+        
+        setTimeout(() => {
+            document.getElementById("add-plant-btn").click();
+        }, 300);
+    };
 });
 
 let editingPlantId = null;
