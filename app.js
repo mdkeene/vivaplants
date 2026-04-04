@@ -129,6 +129,7 @@ function getPlantsNeedingAttention() {
 }
 
 let previousAttentionCount = -1;
+let plantIdToHighlight = null;
 
 function renderAttentionPlants() {
     const container = document.getElementById("attention-plants");
@@ -161,9 +162,9 @@ function renderAttentionPlants() {
 
     attentionPlants.forEach(plant => {
         let instructions = "";
-        if (plant.preference === "moist") instructions = "Keep soil slightly moist";
-        if (plant.preference === "moderate") instructions = "Let top soil dry out";
-        if (plant.preference === "dry") instructions = "Allow soil to fully dry";
+        if (plant.preference === "moist") instructions = "Keep soil slightly moist 💧";
+        if (plant.preference === "moderate") instructions = "Let top soil dry out 🪴";
+        if (plant.preference === "dry") instructions = "Allow soil to fully dry 🌵";
 
         const isJustWatered = plant.justWatered;
         const status = getPlantStatus(plant);
@@ -173,6 +174,15 @@ function renderAttentionPlants() {
 
         const card = document.createElement("article");
         card.className = "plant-card-large";
+        card.dataset.id = plant.id;
+
+        if (plant.id === plantIdToHighlight) {
+            card.classList.add("highlight-next");
+            setTimeout(() => {
+                if (card && card.parentNode) card.classList.remove("highlight-next");
+            }, 4500);
+            plantIdToHighlight = null;
+        }
 
         if (isJustWatered) {
             card.classList.add("watering");
@@ -189,10 +199,10 @@ function renderAttentionPlants() {
             <div class="card-content">
                 <div>
                     <h3 class="plant-name">${plant.name}</h3>
-                    <p class="plant-meta" style="margin-bottom: 4px;">
+                    ${!isJustWatered && instructions ? `<p class="plant-instruction" style="color: #ffffff; font-size: 1rem; font-weight: 500; margin-bottom: 4px; text-shadow: 0 1px 4px rgba(0,0,0,0.6); opacity: 0.95;">${instructions}</p>` : ""}
+                    <p class="plant-meta" style="margin-bottom: 4px; opacity: 0.85; font-size: 0.8rem;">
                         ${isJustWatered ? "Just watered 🌿" : `Last watered ${daysSinceDate(plant.lastWatered)} days ago`}
                     </p>
-                    ${!isJustWatered && instructions ? `<p class="plant-meta" style="color: #A8CBB7; font-weight: 500; font-size: 0.8rem; margin-bottom: 4px;">${instructions}</p>` : ""}
                     ${!isJustWatered ? `<button class="delay-btn" onclick="delayPlant('${plant.id}', event)">Check in 2 days</button>` : ""}
                 </div>
                 ${!isJustWatered ? `<button class="action-btn ${isJustWatered ? 'fade-out' : ''}" onclick="waterPlant('${plant.id}', event)">💧</button>` : ""}
@@ -223,6 +233,18 @@ document.addEventListener("DOMContentLoaded", () => {
         fileInput.click();
     };
 
+    document.getElementById("plant-image-file").addEventListener("change", function () {
+        const file = this.files[0];
+        const preview = document.getElementById("image-preview");
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            preview.classList.remove("hidden");
+        } else {
+            preview.src = "";
+            preview.classList.add("hidden");
+        }
+    });
+
     document.getElementById("close-modal-btn").onclick = () => {
         document.getElementById("add-plant-modal").classList.add("hidden");
         document.body.classList.remove("modal-open");
@@ -238,6 +260,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("add-plant-btn").onclick = () => {
         editingPlantId = null;
         document.getElementById("plant-image-file").value = "";
+        
+        const preview = document.getElementById("image-preview");
+        preview.src = "";
+        preview.classList.add("hidden");
+
         document.querySelector(".modal-header h3").textContent = "Add a Plant";
         document.getElementById("plant-name").value = "";
         document.getElementById("plant-location").value = "";
@@ -324,6 +351,15 @@ function editPlant(id, event) {
     document.getElementById("plant-last-watered").value = plant.lastWatered;
     document.getElementById("plant-image-file").value = "";
 
+    const preview = document.getElementById("image-preview");
+    if (plant.image) {
+        preview.src = plant.image;
+        preview.classList.remove("hidden");
+    } else {
+        preview.src = "";
+        preview.classList.add("hidden");
+    }
+
     const delBtn = document.getElementById("delete-plant-btn");
     delBtn.style.display = "block";
     delBtn.onclick = () => deletePlant(id);
@@ -361,6 +397,11 @@ function delayPlant(id, event) {
         card.style.transition = "all 0.3s ease";
         card.style.opacity = '0';
         card.style.transform = 'scale(0.95)';
+        
+        const nextCard = card.nextElementSibling;
+        if (nextCard && nextCard.dataset.id) {
+            plantIdToHighlight = nextCard.dataset.id;
+        }
     }
 
     setTimeout(async () => {
@@ -368,6 +409,32 @@ function delayPlant(id, event) {
         renderAllPlants();
         renderAttentionPlants();
     }, 300);
+}
+
+function addWaterFeedbackAndHighlightNext(card, plant) {
+    let instructions = "";
+    if (plant.preference === "moist") instructions = "Keep soil slightly moist 💧";
+    if (plant.preference === "moderate") instructions = "Let top soil dry out 🪴";
+    if (plant.preference === "dry") instructions = "Allow soil to fully dry 🌵";
+
+    const feedback = document.createElement("div");
+    feedback.className = "water-feedback";
+    feedback.innerHTML = `<h3 style="margin-bottom:6px;font-size:1.4rem;">Watered 🌿</h3><p style="opacity:0.95;font-weight:600;font-size:1rem;">${instructions}</p>`;
+    card.appendChild(feedback);
+
+    setTimeout(() => {
+        if (feedback.parentNode) feedback.parentNode.removeChild(feedback);
+    }, 3200);
+
+    const nextCard = card.nextElementSibling;
+    if (nextCard && nextCard.dataset && nextCard.dataset.id) {
+        plantIdToHighlight = nextCard.dataset.id;
+        nextCard.classList.add("highlight-next");
+        
+        setTimeout(() => {
+            if (nextCard && nextCard.parentNode) nextCard.classList.remove("highlight-next");
+        }, 4500);
+    }
 }
 
 function waterPlant(id, event) {
@@ -389,11 +456,13 @@ function waterPlant(id, event) {
         const card = event.target.closest(".plant-card-large");
         if (card) {
             card.classList.add("watering");
+            addWaterFeedbackAndHighlightNext(card, plant);
         }
     } else {
-        const card = document.querySelector(`[onclick="waterPlant('${id}', event)"]`)?.closest(".plant-card-large");
+        const card = document.querySelector(`[onclick*="waterPlant('${id}'"]`)?.closest(".plant-card-large");
         if (card) {
             card.classList.add("watering");
+            addWaterFeedbackAndHighlightNext(card, plant);
         }
     }
 
