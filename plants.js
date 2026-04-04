@@ -9,22 +9,6 @@ function getDefaultPlants() {
             image: "https://images.unsplash.com/photo-1545241047-6083a3684587"
         },
         {
-            id: "plant_2",
-            name: "Fiddle Leaf Fig",
-            lastWatered: "2026-03-26",
-            frequency: 10,
-            location: "Living Room",
-            image: "https://images.unsplash.com/photo-1598880940942-2c7e3c2c74e5"
-        },
-        {
-            id: "plant_3",
-            name: "Snake Plant",
-            lastWatered: "2026-03-30",
-            frequency: 14,
-            location: "Bedroom",
-            image: "https://images.unsplash.com/photo-1593691509543-c55fb32c8b3a"
-        },
-        {
             id: "plant_4",
             name: "Aloe Vera",
             lastWatered: "2026-03-28",
