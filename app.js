@@ -23,9 +23,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("onboarding-overlay").classList.add("hidden");
         document.body.classList.remove("modal-open");
         
-        setTimeout(() => {
-            document.getElementById("add-plant-btn").click();
-        }, 300);
+        const tooltip = document.getElementById("first-plant-tooltip");
+        if (tooltip) tooltip.classList.remove("hidden");
     };
 });
 
@@ -264,6 +263,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const preview = document.getElementById("image-preview");
         preview.src = "";
         preview.classList.add("hidden");
+
+        const tooltip = document.getElementById("first-plant-tooltip");
+        if (tooltip) tooltip.classList.add("hidden");
 
         document.querySelector(".modal-header h3").textContent = "Add a Plant";
         document.getElementById("plant-name").value = "";

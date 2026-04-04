@@ -847,6 +847,39 @@ section:last-of-type {
     transform: scale(0.92);
 }
 
+@keyframes tooltipBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+.tooltip {
+    background: var(--primary-green);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow-mid);
+    animation: tooltipBounce 2s infinite ease-in-out;
+    position: relative;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid var(--primary-green);
+}
+
+
+
 /* Plant Card Additions */
 .grid-card-header {
     display: flex;
