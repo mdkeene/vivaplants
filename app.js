@@ -128,6 +128,8 @@ function getPlantsNeedingAttention() {
     });
 }
 
+let previousAttentionCount = -1;
+
 function renderAttentionPlants() {
     const container = document.getElementById("attention-plants");
     container.innerHTML = "";
@@ -135,15 +137,27 @@ function renderAttentionPlants() {
     const attentionPlants = getPlantsNeedingAttention();
     const section = container.closest("section");
     const subtitle = document.querySelector(".subtitle");
+    const currentCount = attentionPlants.length;
 
-    if (attentionPlants.length === 0) {
+    if (currentCount === 0) {
         section.style.display = "none";
-        subtitle.textContent = "All plants are doing well today 🌿";
+        subtitle.innerHTML = "All set for today 🌿<br><span style='font-size: 0.9em; opacity: 0.8;'>Your plants are happy and taken care of.</span>";
+
+        // trigger celebration animation
+        if (previousAttentionCount > 0) {
+            subtitle.classList.remove("celebrate");
+            void subtitle.offsetWidth; // trigger reflow
+            subtitle.classList.add("celebrate");
+            
+            if (navigator.vibrate) navigator.vibrate(30);
+        }
     } else {
         section.style.display = "block";
-        const word = attentionPlants.length === 1 ? "plant needs" : "plants need";
-        subtitle.textContent = `${attentionPlants.length} ${word} attention today`;
+        const word = currentCount === 1 ? "plant needs" : "plants need";
+        subtitle.textContent = `${currentCount} ${word} attention today`;
     }
+
+    previousAttentionCount = currentCount;
 
     attentionPlants.forEach(plant => {
         let instructions = "";

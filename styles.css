@@ -202,6 +202,21 @@ h1 {
     z-index: 1;
 }
 
+@keyframes subtleCelebrate {
+    0% {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    100% {
+        opacity: 0.9;
+        transform: translateY(0);
+    }
+}
+
+.subtitle.celebrate {
+    animation: subtleCelebrate 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
 .section-title {
     color: var(--text-primary);
     font-size: 1.25rem;
