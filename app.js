@@ -416,6 +416,46 @@ function cleanPlant(plant) {
     return clean;
 }
 
+// --- PWA Pull Struggle Effect ---
+let startY = 0;
+let isDragging = false;
+let pullContainer = null;
+
+document.addEventListener('touchstart', (e) => {
+    if (window.scrollY <= 0) {
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        pullContainer = document.querySelector('.container');
+        if (pullContainer) pullContainer.classList.add('is-dragging');
+    }
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+    if (!isDragging || !pullContainer) return;
+
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - startY;
+
+    if (deltaY > 0 && window.scrollY <= 0) {
+        if (e.cancelable) e.preventDefault();
+        
+        const resistance = Math.min(Math.log(deltaY + 1) * 15, 60); 
+        pullContainer.style.transform = `translateY(${resistance}px)`;
+    } else if (deltaY < 0) {
+        pullContainer.style.transform = `translateY(0px)`;
+    }
+}, { passive: false });
+
+const endDrag = () => {
+    if (!isDragging || !pullContainer) return;
+    isDragging = false;
+    pullContainer.classList.remove('is-dragging');
+    pullContainer.style.transform = 'translateY(0px)';
+};
+
+document.addEventListener('touchend', endDrag);
+document.addEventListener('touchcancel', endDrag);
+
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
         navigator.serviceWorker.register("sw.js");

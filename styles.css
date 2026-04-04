@@ -92,11 +92,16 @@ header::after {
     pointer-events: none;
 }
 
+html {
+    overscroll-behavior-y: none;
+}
+
 body {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
     background: #0f1a14;
     overflow-x: hidden;
+    overscroll-behavior-y: none;
 
     color: var(--text-primary);
     line-height: 1.5;
@@ -167,6 +172,12 @@ body::after {
     max-width: 600px;
     margin: 0 auto;
     padding: 24px 20px 48px;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform;
+}
+
+.container.is-dragging {
+    transition: none;
 }
 
 /* Typography */
