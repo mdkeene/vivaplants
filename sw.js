@@ -23,3 +23,25 @@ self.addEventListener("fetch", event => {
         })
     );
 });
+
+self.addEventListener("install", event => {
+    self.skipWaiting(); // 🔥 force new SW immediately
+
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+    );
+});
+
+self.addEventListener("activate", event => {
+    event.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(
+                keys.map(key => {
+                    if (key !== CACHE_NAME) {
+                        return caches.delete(key);
+                    }
+                })
+            )
+        )
+    );
+});
