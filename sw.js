@@ -1,4 +1,4 @@
-const CACHE_NAME = "viva-plants-v2";
+const CACHE_NAME = "viva-plants-v3";
 
 const urlsToCache = [
     "/",
