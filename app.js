@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         localStorage.setItem("viva_onboarding_complete", "true");
         document.getElementById("onboarding-overlay").classList.add("hidden");
         document.body.classList.remove("modal-open");
-        
+
         const tooltip = document.getElementById("first-plant-tooltip");
         if (tooltip) tooltip.classList.remove("hidden");
     };
@@ -100,7 +100,7 @@ function renderAllPlants() {
         if (plant.preference === "dry") prefDisplay = "dry";
 
         card.innerHTML = `
-            <img src="${plant.image}" class="card-image" alt="${plant.name}">
+            <img src="${plant.image}" class="card-image" alt="${plant.name} loading="lazy">
             <div class="card-content">
                 <div class="grid-card-header" style="align-items: center;">
                     <h3 class="plant-name">${plant.name}</h3>
@@ -148,7 +148,7 @@ function renderAttentionPlants() {
             subtitle.classList.remove("celebrate");
             void subtitle.offsetWidth; // trigger reflow
             subtitle.classList.add("celebrate");
-            
+
             if (navigator.vibrate) navigator.vibrate(30);
         }
     } else {
@@ -188,7 +188,7 @@ function renderAttentionPlants() {
         }
 
         card.innerHTML = `
-        <img src="${plant.image}" class="card-image" alt="${plant.name}">
+        <img src="${plant.image}" class="card-image" alt="${plant.name}" loading="lazy">
 
         <div class="water-overlay"></div>
 
@@ -259,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("add-plant-btn").onclick = () => {
         editingPlantId = null;
         document.getElementById("plant-image-file").value = "";
-        
+
         const preview = document.getElementById("image-preview");
         preview.src = "";
         preview.classList.add("hidden");
@@ -399,7 +399,7 @@ function delayPlant(id, event) {
         card.style.transition = "all 0.3s ease";
         card.style.opacity = '0';
         card.style.transform = 'scale(0.95)';
-        
+
         const nextCard = card.nextElementSibling;
         if (nextCard && nextCard.dataset.id) {
             plantIdToHighlight = nextCard.dataset.id;
@@ -432,7 +432,7 @@ function addWaterFeedbackAndHighlightNext(card, plant) {
     if (nextCard && nextCard.dataset && nextCard.dataset.id) {
         plantIdToHighlight = nextCard.dataset.id;
         nextCard.classList.add("highlight-next");
-        
+
         setTimeout(() => {
             if (nextCard && nextCard.parentNode) nextCard.classList.remove("highlight-next");
         }, 4500);
@@ -481,18 +481,43 @@ function waterPlant(id, event) {
             navigator.vibrate([50, 50, 50]);
         }
         plant.justWatered = false;
-        renderAllPlants();
+
+        // Remove only this card
+        const card = document.querySelector(`[data-id="${id}"]`);
+        if (card && card.parentNode) {
+            card.parentNode.removeChild(card);
+        }
+
+        // Update subtitle + section state
         renderAttentionPlants();
+
     }, 3500);
 }
 
-
-
 function getImageBase64(file) {
     return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(file);
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+
+            const MAX_WIDTH = 800;
+            const scale = Math.min(1, MAX_WIDTH / img.width);
+
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            const compressed = canvas.toDataURL("image/jpeg", 0.7);
+
+            URL.revokeObjectURL(url);
+            resolve(compressed);
+        };
+
+        img.src = url;
     });
 }
 
@@ -523,8 +548,8 @@ document.addEventListener('touchmove', (e) => {
 
     if (deltaY > 0 && window.scrollY <= 0) {
         if (e.cancelable) e.preventDefault();
-        
-        const resistance = Math.min(Math.log(deltaY + 1) * 15, 60); 
+
+        const resistance = Math.min(Math.log(deltaY + 1) * 15, 60);
         pullContainer.style.transform = `translateY(${resistance}px)`;
     } else if (deltaY < 0) {
         pullContainer.style.transform = `translateY(0px)`;
