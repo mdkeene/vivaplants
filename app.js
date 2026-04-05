@@ -10,22 +10,178 @@ document.addEventListener("DOMContentLoaded", async () => {
         await Promise.all(plants.map(p => savePlant(cleanPlant(p))));
     }
 
-    renderAllPlants();
+    // ✅ Render order (important)
     renderAttentionPlants();
 
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            renderAllPlants();
+        }, 50);
+    });
+
+    // ✅ THEN attach ALL event listeners here
+
+    // Onboarding
     if (!localStorage.getItem("viva_onboarding_complete")) {
-        document.getElementById("onboarding-overlay").classList.remove("hidden");
-        document.body.classList.add("modal-open");
+        const onboardingOverlay = document.getElementById("onboarding-overlay");
+        if (onboardingOverlay) {
+            onboardingOverlay.classList.remove("hidden");
+            document.body.classList.add("modal-open");
+        }
     }
 
-    document.getElementById("finish-onboarding-btn").onclick = () => {
-        localStorage.setItem("viva_onboarding_complete", "true");
-        document.getElementById("onboarding-overlay").classList.add("hidden");
-        document.body.classList.remove("modal-open");
+    const finishOnboardingBtn = document.getElementById("finish-onboarding-btn");
+    if (finishOnboardingBtn) {
+        finishOnboardingBtn.onclick = () => {
+            localStorage.setItem("viva_onboarding_complete", "true");
+            document.getElementById("onboarding-overlay").classList.add("hidden");
+            document.body.classList.remove("modal-open");
 
-        const tooltip = document.getElementById("first-plant-tooltip");
-        if (tooltip) tooltip.classList.remove("hidden");
-    };
+            const tooltip = document.getElementById("first-plant-tooltip");
+            if (tooltip) tooltip.classList.remove("hidden");
+        };
+    }
+
+    // Photo buttons
+    const btnChoosePhoto = document.getElementById("btn-choose-photo");
+    if (btnChoosePhoto) {
+        btnChoosePhoto.onclick = (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById("plant-image-file");
+            fileInput.removeAttribute("capture");
+            fileInput.click();
+        };
+    }
+
+    const btnTakePhoto = document.getElementById("btn-take-photo");
+    if (btnTakePhoto) {
+        btnTakePhoto.onclick = (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById("plant-image-file");
+            fileInput.setAttribute("capture", "environment");
+            fileInput.click();
+        };
+    }
+
+    const plantImageFile = document.getElementById("plant-image-file");
+    if (plantImageFile) {
+        plantImageFile.addEventListener("change", function () {
+            const file = this.files[0];
+            const preview = document.getElementById("image-preview");
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.classList.remove("hidden");
+            } else {
+                preview.src = "";
+                preview.classList.add("hidden");
+            }
+        });
+    }
+
+    // Modal controls
+    const closeModalBtn = document.getElementById("close-modal-btn");
+    if (closeModalBtn) {
+        closeModalBtn.onclick = () => {
+            document.getElementById("add-plant-modal").classList.add("hidden");
+            document.body.classList.remove("modal-open");
+        };
+    }
+
+    const addPlantModal = document.getElementById("add-plant-modal");
+    if (addPlantModal) {
+        addPlantModal.addEventListener("click", (e) => {
+            if (e.target.id === "add-plant-modal") {
+                addPlantModal.classList.add("hidden");
+                document.body.classList.remove("modal-open");
+            }
+        });
+    }
+
+    const addPlantBtn = document.getElementById("add-plant-btn");
+    if (addPlantBtn) {
+        addPlantBtn.onclick = () => {
+            editingPlantId = null;
+            document.getElementById("plant-image-file").value = "";
+
+            const preview = document.getElementById("image-preview");
+            preview.src = "";
+            preview.classList.add("hidden");
+
+            const tooltip = document.getElementById("first-plant-tooltip");
+            if (tooltip) tooltip.classList.add("hidden");
+
+            document.querySelector(".modal-header h3").textContent = "Add a Plant";
+            document.getElementById("plant-name").value = "";
+            document.getElementById("plant-location").value = "";
+            document.getElementById("plant-type").value = "";
+            document.getElementById("plant-preference").value = "";
+            document.getElementById("plant-frequency").value = "";
+            document.getElementById("plant-last-watered").value = new Date().toISOString().split("T")[0];
+            document.getElementById("delete-plant-btn").style.display = "none";
+            document.getElementById("add-plant-modal").classList.remove("hidden");
+            document.body.classList.add("modal-open");
+        };
+    }
+
+    const savePlantBtn = document.getElementById("save-plant");
+    if (savePlantBtn) {
+        savePlantBtn.onclick = async () => {
+            const name = document.getElementById("plant-name").value;
+            const location = document.getElementById("plant-location").value;
+            const type = document.getElementById("plant-type").value || "";
+            const preference = document.getElementById("plant-preference").value || "";
+            const frequencyStr = document.getElementById("plant-frequency").value;
+            const frequency = frequencyStr ? parseInt(frequencyStr) : null;
+            let lastWatered = document.getElementById("plant-last-watered").value;
+
+            if (!name) return;
+            if (!lastWatered) lastWatered = new Date().toISOString().split("T")[0];
+
+            const fileInput = document.getElementById("plant-image-file");
+            let image = "https://images.unsplash.com/photo-1501004318641-b39e6451bec6";
+
+            if (fileInput.files[0]) {
+                image = await getImageBase64(fileInput.files[0]);
+            }
+
+            if (editingPlantId) {
+                const index = plants.findIndex(p => p.id === editingPlantId);
+                if (index !== -1) {
+                    const oldPlant = plants[index];
+                    plants[index] = { ...oldPlant, name, location, type, preference, frequency, lastWatered };
+                    if (fileInput.files[0]) plants[index].image = image;
+
+                    if (oldPlant.lastWatered !== lastWatered) {
+                        plants[index].skipUntil = null;
+                    }
+
+                    await savePlant(cleanPlant(plants[index]));
+                }
+            } else {
+                const newPlant = {
+                    id: "plant_" + Date.now(),
+                    name,
+                    location,
+                    type,
+                    preference,
+                    frequency,
+                    lastWatered,
+                    image
+                };
+                plants.push(newPlant);
+
+                await savePlant(cleanPlant(newPlant));
+            }
+
+            fileInput.value = "";
+
+            renderAllPlants();
+            renderAttentionPlants();
+
+            document.getElementById("add-plant-modal").classList.add("hidden");
+            document.body.classList.remove("modal-open");
+        };
+    }
 });
 
 let editingPlantId = null;
@@ -100,7 +256,7 @@ function renderAllPlants() {
         if (plant.preference === "dry") prefDisplay = "dry";
 
         card.innerHTML = `
-            <img src="${plant.image}" class="card-image" alt="${plant.name} loading="lazy">
+            <img src="${plant.image}" class="card-image" alt="${plant.name}" loading="lazy">
             <div class="card-content">
                 <div class="grid-card-header" style="align-items: center;">
                     <h3 class="plant-name">${plant.name}</h3>
@@ -213,129 +369,7 @@ function renderAttentionPlants() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    renderAllPlants();
-    renderAttentionPlants();
 
-    // 🔥 attach events AFTER DOM exists
-    document.getElementById("btn-choose-photo").onclick = (e) => {
-        e.preventDefault();
-        const fileInput = document.getElementById("plant-image-file");
-        fileInput.removeAttribute("capture");
-        fileInput.click();
-    };
-
-    document.getElementById("btn-take-photo").onclick = (e) => {
-        e.preventDefault();
-        const fileInput = document.getElementById("plant-image-file");
-        fileInput.setAttribute("capture", "environment");
-        fileInput.click();
-    };
-
-    document.getElementById("plant-image-file").addEventListener("change", function () {
-        const file = this.files[0];
-        const preview = document.getElementById("image-preview");
-        if (file) {
-            preview.src = URL.createObjectURL(file);
-            preview.classList.remove("hidden");
-        } else {
-            preview.src = "";
-            preview.classList.add("hidden");
-        }
-    });
-
-    document.getElementById("close-modal-btn").onclick = () => {
-        document.getElementById("add-plant-modal").classList.add("hidden");
-        document.body.classList.remove("modal-open");
-    };
-
-    document.getElementById("add-plant-modal").addEventListener("click", (e) => {
-        if (e.target.id === "add-plant-modal") {
-            document.getElementById("add-plant-modal").classList.add("hidden");
-            document.body.classList.remove("modal-open");
-        }
-    });
-
-    document.getElementById("add-plant-btn").onclick = () => {
-        editingPlantId = null;
-        document.getElementById("plant-image-file").value = "";
-
-        const preview = document.getElementById("image-preview");
-        preview.src = "";
-        preview.classList.add("hidden");
-
-        const tooltip = document.getElementById("first-plant-tooltip");
-        if (tooltip) tooltip.classList.add("hidden");
-
-        document.querySelector(".modal-header h3").textContent = "Add a Plant";
-        document.getElementById("plant-name").value = "";
-        document.getElementById("plant-location").value = "";
-        document.getElementById("plant-type").value = "";
-        document.getElementById("plant-preference").value = "";
-        document.getElementById("plant-frequency").value = "";
-        document.getElementById("plant-last-watered").value = new Date().toISOString().split("T")[0];
-        document.getElementById("delete-plant-btn").style.display = "none";
-        document.getElementById("add-plant-modal").classList.remove("hidden");
-        document.body.classList.add("modal-open");
-    };
-
-    document.getElementById("save-plant").onclick = async () => {
-        const name = document.getElementById("plant-name").value;
-        const location = document.getElementById("plant-location").value;
-        const type = document.getElementById("plant-type").value || "";
-        const preference = document.getElementById("plant-preference").value || "";
-        const frequencyStr = document.getElementById("plant-frequency").value;
-        const frequency = frequencyStr ? parseInt(frequencyStr) : null;
-        let lastWatered = document.getElementById("plant-last-watered").value;
-
-        if (!name) return;
-        if (!lastWatered) lastWatered = new Date().toISOString().split("T")[0];
-
-        const fileInput = document.getElementById("plant-image-file");
-        let image = "https://images.unsplash.com/photo-1501004318641-b39e6451bec6";
-
-        if (fileInput.files[0]) {
-            image = await getImageBase64(fileInput.files[0]);
-        }
-
-        if (editingPlantId) {
-            const index = plants.findIndex(p => p.id === editingPlantId);
-            if (index !== -1) {
-                const oldPlant = plants[index];
-                plants[index] = { ...oldPlant, name, location, type, preference, frequency, lastWatered };
-                if (fileInput.files[0]) plants[index].image = image;
-
-                if (oldPlant.lastWatered !== lastWatered) {
-                    plants[index].skipUntil = null;
-                }
-
-                await savePlant(cleanPlant(plants[index]));
-            }
-        } else {
-            const newPlant = {
-                id: "plant_" + Date.now(),
-                name,
-                location,
-                type,
-                preference,
-                frequency,
-                lastWatered,
-                image
-            };
-            plants.push(newPlant);
-
-            await savePlant(cleanPlant(newPlant));
-        }
-
-        fileInput.value = "";
-
-        renderAllPlants();
-        renderAttentionPlants();
-
-        document.getElementById("add-plant-modal").classList.add("hidden");
-        document.body.classList.remove("modal-open");
-    };
-});
 
 function editPlant(id, event) {
     if (event) event.stopPropagation();
@@ -408,7 +442,12 @@ function delayPlant(id, event) {
 
     setTimeout(async () => {
         await savePlant(cleanPlant(plant));
-        renderAllPlants();
+
+        const card = document.querySelector(`[data-id="${id}"]`);
+        if (card && card.parentNode) {
+            card.parentNode.removeChild(card);
+        }
+
         renderAttentionPlants();
     }, 300);
 }
