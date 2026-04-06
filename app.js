@@ -5,6 +5,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     plants = await getAllPlants();
 
+    // Populate plant library select
+    const plantTypeSelect = document.getElementById("plant-type");
+    if (plantTypeSelect) {
+        PLANT_LIBRARY.forEach(plant => {
+            const option = document.createElement("option");
+            option.value = plant.value;
+            option.textContent = plant.label;
+            plantTypeSelect.appendChild(option);
+        });
+
+        plantTypeSelect.onchange = () => {
+            const customContainer = document.getElementById("custom-type-container");
+            if (plantTypeSelect.value === "custom") {
+                customContainer.classList.remove("hidden");
+            } else {
+                customContainer.classList.add("hidden");
+                // Clear custom input if not used
+                document.getElementById("plant-custom-type").value = "";
+            }
+        };
+    }
+
     if (plants.length === 0) {
         plants = getDefaultPlants();
         await Promise.all(plants.map(p => savePlant(cleanPlant(p))));
@@ -97,6 +119,92 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // Mode Toggling Logic
+    const toggleBtn = document.getElementById("toggle-edit-mode");
+    const modal = document.getElementById("add-plant-modal");
+    if (toggleBtn && modal) {
+        toggleBtn.onclick = () => {
+            const isEditing = modal.classList.toggle("edit-mode");
+            toggleBtn.textContent = isEditing ? "Done" : "Edit";
+        };
+    }
+
+    // Light Reading Logic
+    const addLightBtn = document.getElementById("add-light-btn");
+    if (addLightBtn) {
+        addLightBtn.onclick = async () => {
+            if (!editingPlantId) return;
+            const plant = plants.find(p => p.id === editingPlantId);
+            if (!plant) return;
+
+            const timeSelect = document.getElementById("light-time");
+            const luxInput = document.getElementById("light-lux");
+            const lux = parseInt(luxInput.value);
+
+            if (isNaN(lux)) return;
+
+            if (!plant.lightHistory || !Array.isArray(plant.lightHistory)) {
+                plant.lightHistory = [];
+            }
+
+            plant.lightHistory.push({
+                time: timeSelect.value,
+                lux: lux,
+                date: new Date().toISOString().split("T")[0]
+            });
+
+            // Cap at 20 entries
+            plant.lightHistory = plant.lightHistory.slice(-20);
+
+            await savePlant(cleanPlant(plant));
+            
+            // Clear inputs
+            luxInput.value = "";
+            timeSelect.selectedIndex = 0;
+
+            // Refresh view (behind the scenes)
+            renderLightHistory(plant);
+            if (navigator.vibrate) navigator.vibrate(20);
+        };
+    }
+
+    // Progress Photo Logic
+    const addProgressBtn = document.getElementById("add-progress-btn");
+    const progressInput = document.getElementById("progress-photo-input");
+    
+    if (addProgressBtn && progressInput) {
+        addProgressBtn.onclick = () => progressInput.click();
+        
+        progressInput.onchange = async () => {
+            if (!editingPlantId || !progressInput.files[0]) return;
+            const plant = plants.find(p => p.id === editingPlantId);
+            if (!plant) return;
+
+            const base64 = await getImageBase64(progressInput.files[0]);
+            
+            if (!plant.photos || !Array.isArray(plant.photos)) {
+                plant.photos = [];
+            }
+
+            plant.photos.push({
+                date: new Date().toISOString().split("T")[0],
+                image: base64
+            });
+
+            // Cap at 10 photos
+            plant.photos = plant.photos.slice(-10);
+
+            await savePlant(cleanPlant(plant));
+            
+            // Clear input
+            progressInput.value = "";
+            
+            // Immediate re-render
+            renderProgressPhotos(plant);
+            if (navigator.vibrate) navigator.vibrate(30);
+        };
+    }
+
     const addPlantBtn = document.getElementById("add-plant-btn");
     if (addPlantBtn) {
         addPlantBtn.onclick = () => {
@@ -113,13 +221,132 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.querySelector(".modal-header h3").textContent = "Add a Plant";
             document.getElementById("plant-name").value = "";
             document.getElementById("plant-location").value = "";
-            document.getElementById("plant-type").value = "";
+            
+            const typeSelect = document.getElementById("plant-type");
+            typeSelect.value = "";
+            document.getElementById("custom-type-container").classList.add("hidden");
+            document.getElementById("plant-custom-type").value = "";
+            
             document.getElementById("plant-preference").value = "";
             document.getElementById("plant-frequency").value = "";
             document.getElementById("plant-last-watered").value = new Date().toISOString().split("T")[0];
             document.getElementById("delete-plant-btn").style.display = "none";
+            document.getElementById("add-plant-modal").classList.add("edit-mode");
+            const toggleBtn = document.getElementById("toggle-edit-mode");
+            if (toggleBtn) toggleBtn.textContent = "Done";
+
             document.getElementById("add-plant-modal").classList.remove("hidden");
             document.body.classList.add("modal-open");
+        };
+    }
+
+    // Copy Plant Report Logic
+    const copyReportBtn = document.getElementById("copy-plant-report-btn");
+    if (copyReportBtn) {
+        copyReportBtn.onclick = async () => {
+            if (!editingPlantId) return;
+            const plant = plants.find(p => p.id === editingPlantId);
+            if (!plant) return;
+            const report = generatePlantReport(plant);
+            try {
+                await navigator.clipboard.writeText(JSON.stringify(report, null, 2));
+                copyReportBtn.textContent = "Report Copied! ✅";
+                setTimeout(() => {
+                    copyReportBtn.textContent = "Copy Plant Report";
+                }, 2000);
+            } catch (err) {
+                console.error("Failed to copy: ", err);
+            }
+        };
+    }
+
+    // Care Guide Toggle
+    const toggleCareBtn = document.getElementById("toggle-care-guide");
+    if (toggleCareBtn) {
+        toggleCareBtn.onclick = () => {
+            const content = document.getElementById("care-guide-content");
+            const isHidden = content.classList.toggle("hidden");
+            toggleCareBtn.textContent = isHidden ? "Check Care Tips ▾" : "Close Care Tips ▴";
+        };
+    }
+
+    // Import plants logic
+    const importBtn = document.getElementById("import-plants-btn");
+    const importInput = document.getElementById("import-plants-input");
+
+    if (importBtn && importInput) {
+        importBtn.onclick = () => importInput.click();
+
+        importInput.onchange = async () => {
+            const file = importInput.files[0];
+            if (!file) return;
+
+            let data;
+            try {
+                const text = await file.text();
+                data = JSON.parse(text);
+            } catch {
+                alert("Invalid JSON file");
+                return;
+            }
+
+            if (!Array.isArray(data)) {
+                alert("File must contain an array of plants");
+                return;
+            }
+
+            for (const plant of data) {
+                const clean = cleanPlant({
+                    id: "plant_" + Date.now() + "_" + Math.random(),
+                    name: plant.name || "Unnamed",
+                    location: plant.location || "",
+                    type: plant.type || "",
+                    preference: plant.preference || "",
+                    frequency: plant.frequency || null,
+                    lastWatered: plant.lastWatered || new Date().toISOString().split("T")[0],
+                    wateringHistory: plant.wateringHistory || [],
+                    lightHistory: plant.lightHistory || [],
+                    photos: plant.photos || [],
+                    comments: Array.isArray(plant.comments) ? plant.comments : []
+                });
+
+                plants.push(clean);
+                await savePlant(clean);
+            }
+
+            renderAllPlants();
+            renderAttentionPlants();
+            alert("Plants imported successfully 🌿");
+        };
+    }
+
+    // Add comment logic
+    const addCommentBtn = document.getElementById("add-comment-btn");
+    if (addCommentBtn) {
+        addCommentBtn.onclick = async () => {
+            if (!editingPlantId) return;
+
+            const input = document.getElementById("plant-comment-input");
+            const text = input.value.trim();
+            if (!text) return;
+
+            const plant = plants.find(p => p.id === editingPlantId);
+            if (!plant) return;
+
+            if (!plant.comments) plant.comments = [];
+            plant.comments.push({
+                text,
+                date: new Date().toISOString().split("T")[0]
+            });
+
+            // Keep only last 90 days
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - 90);
+            plant.comments = plant.comments.filter(c => new Date(c.date) >= cutoff);
+
+            await savePlant(cleanPlant(plant));
+            input.value = "";
+            renderComments(plant);
         };
     }
 
@@ -128,7 +355,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         savePlantBtn.onclick = async () => {
             const name = document.getElementById("plant-name").value;
             const location = document.getElementById("plant-location").value;
-            const type = document.getElementById("plant-type").value || "";
+            
+            // Handle plant type selection
+            const typeSelect = document.getElementById("plant-type");
+            const customTypeInput = document.getElementById("plant-custom-type");
+            let type = typeSelect.value;
+            if (type === "custom") {
+                type = customTypeInput.value || "Custom Plant";
+            }
+
             const preference = document.getElementById("plant-preference").value || "";
             const frequencyStr = document.getElementById("plant-frequency").value;
             const frequency = frequencyStr ? parseInt(frequencyStr) : null;
@@ -226,7 +461,7 @@ function getPlantStatus(plant) {
 
 function renderAllPlants() {
     const container = document.getElementById("all-plants-grid");
-    
+
     // Get existing cards to reuse
     const existingCards = new Map();
     Array.from(container.children).forEach(child => {
@@ -278,7 +513,7 @@ function renderAllPlants() {
         if (!isNew) {
             card.style.animation = "none";
         } else {
-            card.style.animation = ""; 
+            card.style.animation = "";
         }
 
         card.innerHTML = `
@@ -308,7 +543,7 @@ function getPlantsNeedingAttention() {
         const status = getPlantStatus(p);
 
         // keep it visible briefly if just watered
-        return status !== "ok" || p.justWatered;
+        return status !== "ok";
     });
 }
 
@@ -349,7 +584,7 @@ function renderAttentionPlants() {
     } else {
         const word = currentCount === 1 ? "plant needs" : "plants need";
         subtitle.textContent = `${currentCount} ${word} attention today`;
-        
+
         // Remove empty state if it exists
         const empty = container.querySelector(".empty-state");
         if (empty) container.removeChild(empty);
@@ -405,7 +640,7 @@ function renderAttentionPlants() {
         if (!isNew) {
             card.style.animation = "none";
         } else {
-            card.style.animation = ""; 
+            card.style.animation = "";
         }
 
         const highlightClass = (plant.id === plantIdToHighlight) ? "highlight-next" : "";
@@ -417,6 +652,10 @@ function renderAttentionPlants() {
 
         if (isJustWatered) card.classList.add("watering");
         else card.classList.remove("watering");
+
+        // 🛡️ Animation Guard: If the card is currently playing its watering sequence,
+        // we skip the innerHTML update entirely to prevent the animation from resetting.
+        if (card.dataset.animating === "true" || card.classList.contains("attention-exit")) return;
 
         const contentHtml = `
         <img src="${plant.image}" class="card-image" alt="${plant.name}" loading="lazy">
@@ -448,6 +687,8 @@ function renderAttentionPlants() {
 
 
 
+
+
 function editPlant(id, event) {
     if (event) event.stopPropagation();
     const plant = plants.find(p => p.id === id);
@@ -455,13 +696,78 @@ function editPlant(id, event) {
 
     editingPlantId = id;
 
-    document.querySelector(".modal-header h3").textContent = "Edit Plant";
-    document.getElementById("plant-name").value = plant.name;
-    document.getElementById("plant-location").value = plant.location;
-    document.getElementById("plant-type").value = plant.type || "";
-    document.getElementById("plant-preference").value = plant.preference || "";
-    document.getElementById("plant-frequency").value = plant.frequency || "";
-    document.getElementById("plant-last-watered").value = plant.lastWatered;
+    // Reset to View Mode on open
+    const modal = document.getElementById("add-plant-modal");
+    if (modal) modal.classList.remove("edit-mode");
+    
+    const toggleBtn = document.getElementById("toggle-edit-mode");
+    if (toggleBtn) toggleBtn.textContent = "Edit";
+
+    // Set Header
+    document.querySelector(".modal-header h3").textContent = "Plant details";
+
+    // Populate Inputs AND View Labels
+    const setField = (id, val) => {
+        const input = document.getElementById(`plant-${id}`);
+        const view = document.getElementById(`view-plant-${id}`);
+        if (input) input.value = val || "";
+        if (view) {
+            if (id === 'preference') {
+                const prefMap = { moist: "Keep soil moist (💧)", moderate: "Moderate drying (🪴)", dry: "Let soil dry (🌵)" };
+                view.textContent = prefMap[val] || "No preference set";
+            } else if (id === 'frequency') {
+                view.textContent = val ? `Every ${val} days` : "No frequency set";
+            } else if (id === 'last-watered') {
+                const date = new Date(val);
+                view.textContent = date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+            } else {
+                view.textContent = val || "Not specified";
+            }
+        }
+    };
+
+    setField('name', plant.name);
+    setField('location', plant.location);
+    
+    const typeSelect = document.getElementById("plant-type");
+    const customTypeInput = document.getElementById("plant-custom-type");
+    const customContainer = document.getElementById("custom-type-container");
+    const typeView = document.getElementById("view-plant-type");
+
+    const matchedProfile = findPlantTypeMatch(plant.type);
+    if (matchedProfile) {
+        typeSelect.value = matchedProfile.value;
+        customContainer.classList.add("hidden");
+        if (typeView) typeView.textContent = matchedProfile.label;
+    } else {
+        typeSelect.value = "custom";
+        customContainer.classList.remove("hidden");
+        customTypeInput.value = plant.type || "";
+        if (typeView) typeView.textContent = plant.type || "Unknown Type";
+    }
+
+    setField('preference', plant.preference);
+    setField('frequency', plant.frequency);
+    setField('last-watered', plant.lastWatered);
+
+    // Dynamic Care Status Line
+    const statusView = document.getElementById("view-plant-status");
+    if (statusView) {
+        const days = getDaysUntilNextCheck(plant);
+        if (days === null) {
+            statusView.textContent = "All good for now";
+        } else if (days <= 0) {
+            statusView.textContent = "Check today 💧";
+            statusView.style.color = "var(--danger-red, #e74c3c)"; // Fallback to red if needed
+        } else if (days === 1) {
+            statusView.textContent = "Next check tomorrow";
+            statusView.style.color = "var(--accent-green)";
+        } else {
+            statusView.textContent = `Next check in ${days} days`;
+            statusView.style.color = "var(--accent-green)";
+        }
+    }
+
     document.getElementById("plant-image-file").value = "";
 
     const preview = document.getElementById("image-preview");
@@ -474,11 +780,198 @@ function editPlant(id, event) {
     }
 
     const delBtn = document.getElementById("delete-plant-btn");
-    delBtn.style.display = "block";
     delBtn.onclick = () => deletePlant(id);
 
-    document.getElementById("add-plant-modal").classList.remove("hidden");
+    // Populate watering history
+    const historyList = document.getElementById("watering-history-list");
+    historyList.innerHTML = "";
+    if (plant.wateringHistory && plant.wateringHistory.length > 0) {
+        // Show last 7 entries, most recent first (slice last 7, then reverse)
+        [...plant.wateringHistory].slice(-7).reverse().forEach(dateStr => {
+            const li = document.createElement("li");
+            const dateObj = new Date(dateStr);
+            li.textContent = dateObj.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+            historyList.appendChild(li);
+        });
+    } else {
+        const emptyLi = document.createElement("li");
+        emptyLi.textContent = "No watering history yet";
+        emptyLi.style.opacity = "0.6";
+        historyList.appendChild(emptyLi);
+    }
+
+    const avgDisplay = document.getElementById("watering-average");
+    const avg = getAverageWateringInterval(plant);
+    if (avg) {
+        avgDisplay.textContent = `Usually every ${avg} days`;
+    } else {
+        avgDisplay.textContent = "";
+    }
+
+    // Populate light history
+    renderLightHistory(plant);
+
+    // Populate progress photos
+    renderProgressPhotos(plant);
+
+    // Populate and potentially show care guide
+    renderCareGuide(plant.type);
+
+    // Populate and show Insights
+    renderInsights(plant);
+
+    // Populate and show comments
+    renderComments(plant);
+
+    modal.classList.remove("hidden");
     document.body.classList.add("modal-open");
+}
+
+function renderLightHistory(plant) {
+    const container = document.getElementById("view-light-history");
+    if (!container) return;
+
+    if (!plant.lightHistory || plant.lightHistory.length === 0) {
+        container.innerHTML = "<p style='opacity: 0.5;'>No light readings yet</p>";
+        return;
+    }
+
+    // Last 5 entries, most recent first
+    const recent = [...plant.lightHistory].slice(-5).reverse();
+    
+    container.innerHTML = recent.map(entry => {
+        const dateObj = new Date(entry.date);
+        const dateStr = dateObj.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+        return `<div>${entry.time} · ${entry.lux} lux <span style="font-size: 0.8rem; opacity: 0.6; margin-left: 8px;">(${dateStr})</span></div>`;
+    }).join("");
+}
+
+function renderProgressPhotos(plant) {
+    const container = document.getElementById("view-progress-photos");
+    if (!container) return;
+
+    if (!plant.photos || plant.photos.length === 0) {
+        container.innerHTML = "<p style='opacity: 0.5;'>No progress photos yet</p>";
+        return;
+    }
+
+    // Newest first
+    const photos = [...plant.photos].reverse();
+    const hero = photos[0];
+    const thumbnails = photos.slice(1, 4); // next 3
+
+    let html = `<img src="${hero.image}" class="progress-hero" alt="Latest progress">`;
+    
+    if (thumbnails.length > 0) {
+        html += `<div class="progress-thumbs">`;
+        html += thumbnails.map(p => `<img src="${p.image}" class="progress-thumb" alt="Previous progress">`).join("");
+        html += `</div>`;
+    }
+
+    container.innerHTML = html;
+}
+
+function renderCareGuide(type) {
+    const section = document.getElementById("care-guide-section");
+    const content = document.getElementById("care-guide-content");
+    if (!section || !content) return;
+
+    const profile = findPlantTypeMatch(type);
+    
+    if (!profile || !profile.care) {
+        section.style.display = "none";
+        return;
+    }
+
+    section.style.display = "block";
+    content.innerHTML = `
+        <div style="margin-bottom: 8px;"><strong>Scientific:</strong> <em>${profile.scientific}</em></div>
+        <div style="margin-bottom: 4px;"><strong>Light:</strong> ${profile.care.light}</div>
+        <div style="margin-bottom: 4px;"><strong>Watering:</strong> ${profile.care.watering}</div>
+        <div style="margin-bottom: 4px;"><strong>Humidity:</strong> ${profile.care.humidity}</div>
+        <div style="margin-top: 8px; font-style: italic; opacity: 0.8;">${profile.care.notes}</div>
+    `;
+    
+    // Always start collapsed when opening plant
+    content.classList.add("hidden");
+    document.getElementById("toggle-care-guide").textContent = "Check Care Tips ▾";
+}
+
+function renderInsights(plant) {
+    const section = document.getElementById("insights-section");
+    const list = document.getElementById("view-insights-list");
+    if (!section || !list) return;
+
+    const profile = getPlantProfile(plant.type);
+    const messages = [
+        getLightInsight(plant, profile),
+        getWateringInsight(plant),
+        getSuitabilityInsight(plant)
+    ].filter(msg => msg !== null);
+
+    if (messages.length === 0) {
+        section.classList.add("hidden");
+        return;
+    }
+
+    section.classList.remove("hidden");
+    list.innerHTML = messages.map(msg => `<li>${msg}</li>`).join("");
+}
+
+function generatePlantReport(plant) {
+    const daysLeft = getDaysUntilNextCheck(plant);
+    let status = "ok";
+    if (daysLeft !== null) {
+        if (daysLeft < 0) status = "overdue";
+        else if (daysLeft === 0) status = "due";
+    }
+
+    const luxValues = (plant.lightHistory || []).map(h => h.lux);
+    const lightSummary = luxValues.length > 0 ? {
+        maxLux: Math.max(...luxValues),
+        minLux: Math.min(...luxValues),
+        averageLux: Math.round(luxValues.reduce((a, b) => a + b, 0) / luxValues.length)
+    } : null;
+
+    // Calculate intervals for trend
+    let wateringTrend = "insufficient_data";
+    if (plant.wateringHistory && plant.wateringHistory.length >= 4) {
+        const intervals = [];
+        for (let i = 1; i < plant.wateringHistory.length; i++) {
+            const diff = Math.round((new Date(plant.wateringHistory[i]) - new Date(plant.wateringHistory[i - 1])) / (1000 * 60 * 60 * 24));
+            intervals.push(diff);
+        }
+        const recent = intervals.slice(-3);
+        if (recent.length === 3) {
+            const first = recent[0];
+            const last = recent[recent.length - 1];
+            if (Math.abs(first - last) <= 1) wateringTrend = "consistent";
+            else if (last > first) wateringTrend = "increasing";
+            else wateringTrend = "decreasing";
+        }
+    }
+
+    return {
+        name: plant.name,
+        location: plant.location,
+        type: plant.type || "Not specified",
+        soilPreference: plant.preference || "Not specified",
+        wateringStatus: status,
+        daysSinceWatered: daysSinceDate(plant.lastWatered),
+        watering: {
+            frequencyDays: plant.frequency || "Not set",
+            lastWatered: plant.lastWatered,
+            averageInterval: getAverageWateringInterval(plant) || "Not enough data",
+            history: plant.wateringHistory || []
+        },
+        wateringTrend,
+        light: plant.lightHistory || [],
+        lightSummary,
+        photoCount: (plant.photos || []).length,
+        photos: (plant.photos || []).map(p => ({
+            date: p.date
+        }))
+    };
 }
 
 async function deletePlant(id) {
@@ -555,194 +1048,85 @@ function addWaterFeedbackAndHighlightNext(card, plant) {
     }
 }
 
-function waterPlant(id, event) {
+async function waterPlant(id, event) {
     if (event) event.stopPropagation();
-
-    const isAttentionCard = event?.target?.closest(".plant-card-large");
-
-    if (!isAttentionCard) {
-        const plant = plants.find(p => p.id === id);
-        if (!plant) return;
-
-        if (navigator.vibrate) navigator.vibrate(15);
-
-        const today = new Date().toISOString().split("T")[0];
-        plant.lastWatered = today;
-        plant.lastWateredTimestamp = Date.now();
-
-        if (!plant.wateringHistory) {
-            plant.wateringHistory = [];
-        }
-
-        plant.wateringHistory.push(today);
-        plant.wateringHistory = plant.wateringHistory.slice(-5);
-
-        delete plant.skipUntil;
-
-        savePlant(cleanPlant(plant));
-
-        const btn = event?.target?.closest(".grid-water-btn");
-        if (btn) {
-            btn.classList.add("active");
-            const icon = btn.querySelector(".icon");
-
-            if (icon) {
-                icon.textContent = "✓";
-                icon.style.color = "white";
-                icon.style.fontWeight = "bold";
-                icon.style.fontSize = "1.2rem";
-            }
-
-            btn.disabled = true;
-
-            // Surgically update the status label in the grid card
-            const gridCard = btn.closest(".plant-card-small");
-            if (gridCard) {
-                const statusSpan = gridCard.querySelector(".status-strong");
-                if (statusSpan) {
-                    statusSpan.textContent = "Just watered 🌿";
-                    statusSpan.className = "status-strong text-ok";
-                }
-            }
-
-            setTimeout(() => {
-                if (icon) {
-                    icon.textContent = "💧";
-                    icon.style.color = "";
-                    icon.style.fontWeight = "";
-                    icon.style.fontSize = "";
-                }
-                btn.classList.remove("active");
-                btn.disabled = false;
-            }, 5000);
-        }
-
-        // Smoothly remove from attention if it exists there
-        const attentionCard = document.querySelector(`.plant-card-large[data-id="${id}"]`);
-        if (attentionCard) {
-            const attentionSection = document.querySelector("#attention-plants")?.closest("section");
-            const allPlantsSection = document.querySelector("#all-plants-grid")?.closest("section");
-            
-            // 1. Initial Anim: fade the card out
-            attentionCard.classList.add("attention-exit");
-            
-            setTimeout(() => {
-                if (!attentionSection) {
-                    renderAttentionPlants();
-                    return;
-                }
-
-                // 2. Capture "Before" state
-                const oldHeight = attentionSection.offsetHeight;
-                const oldGridRect = allPlantsSection?.getBoundingClientRect();
-                
-                // 3. Update DOM
-                renderAttentionPlants();
-                
-                // 4. Capture "After" state
-                const newHeight = attentionSection.scrollHeight;
-                
-                // 5. Coordinated Transition
-                // Lock height to old and transform grid to old position
-                attentionSection.style.height = oldHeight + "px";
-                if (allPlantsSection && oldGridRect) {
-                    const newGridRect = allPlantsSection.getBoundingClientRect();
-                    const diffY = oldGridRect.top - newGridRect.top;
-                    allPlantsSection.style.transform = `translateY(${diffY}px)`;
-                    allPlantsSection.style.transition = "none"; 
-                }
-
-                // Force reflow
-                void attentionSection.offsetWidth;
-
-                // Trigger smooth slide
-                attentionSection.style.height = (newHeight > 0 ? newHeight : 0) + "px";
-                if (allPlantsSection) {
-                    allPlantsSection.classList.add("waterfall-slide");
-                    allPlantsSection.style.transform = "translateY(0)";
-                }
-
-                // 6. Cleanup after 800ms (match CSS)
-                setTimeout(() => {
-                    attentionSection.style.height = "";
-                    if (allPlantsSection) {
-                        allPlantsSection.classList.remove("waterfall-slide");
-                        allPlantsSection.style.transform = "";
-                        allPlantsSection.style.transition = "";
-                    }
-                }, 800);
-
-            }, 550); 
-        } else {
-            renderAttentionPlants();
-        }
-
-        return;
-    }
 
     const plant = plants.find(p => p.id === id);
     if (!plant) return;
 
-    if (navigator.vibrate) {
-        // Subtle click on start
-        navigator.vibrate(15);
-    }
+    if (navigator.vibrate) navigator.vibrate(20);
 
-    // mark visually first (no re-render yet)
-    plant.justWatered = true;
+    const today = new Date().toISOString().split("T")[0];
+    plant.lastWatered = today;
+    plant.lastWateredTimestamp = Date.now();
+    
+    if (!plant.wateringHistory) plant.wateringHistory = [];
+    plant.wateringHistory.push(today);
+    plant.wateringHistory = plant.wateringHistory.slice(-20);
+    
     delete plant.skipUntil;
 
-    // trigger animation WITHOUT rebuild
-    if (event && event.target) {
-        const card = event.target.closest(".plant-card-large");
-        if (card) {
-            card.classList.add("watering");
-            addWaterFeedbackAndHighlightNext(card, plant);
-        }
-    } else {
-        const card = document.querySelector(`[onclick*="waterPlant('${id}'"]`)?.closest(".plant-card-large");
-        if (card) {
-            card.classList.add("watering");
-            addWaterFeedbackAndHighlightNext(card, plant);
-        }
+    // Handle Attention Card Context (Detailed fill animation)
+    const attentionCard = event?.target?.closest(".plant-card-large");
+    
+    if (attentionCard) {
+        // Trigger detailed Fill+Pop animation
+        attentionCard.dataset.animating = "true";
+        setTimeout(() => {
+            if (attentionCard) delete attentionCard.dataset.animating;
+        }, 3600);
+        attentionCard.classList.add("watering");
+        addWaterFeedbackAndHighlightNext(attentionCard, plant);
+
+        setTimeout(async () => {
+            await savePlant(cleanPlant(plant));
+
+            if (attentionCard) attentionCard.remove();
+
+            requestAnimationFrame(() => {
+                renderAttentionPlants();
+
+                setTimeout(() => {
+                    renderAllPlants();
+                }, 50);
+            });
+
+        }, 3500); // Sequence duration
+        
+        return;
     }
 
-    // update data slightly later
-    setTimeout(async () => {
-        const today = new Date().toISOString().split("T")[0];
-        plant.lastWatered = today;
-        plant.lastWateredTimestamp = Date.now();
+    // Handle Grid Card Context (Clean icon swap + fade removal)
+    const gridBtn = event?.target?.closest(".grid-water-btn");
+    if (gridBtn) {
+        gridBtn.classList.add("active");
+        const icon = gridBtn.querySelector(".icon");
+        if (icon) icon.textContent = "✓";
+        gridBtn.disabled = true;
 
-        if (!plant.wateringHistory) {
-            plant.wateringHistory = [];
+        const gridCard = gridBtn.closest(".plant-card-small");
+        if (gridCard) {
+            const statusSpan = gridCard.querySelector(".status-strong");
+            if (statusSpan) {
+                statusSpan.textContent = "Done 🌿";
+                statusSpan.className = "status-strong text-ok";
+            }
         }
 
-        plant.wateringHistory.push(today);
+        setTimeout(() => {
+            if (icon) icon.textContent = "💧";
+            gridBtn.classList.remove("active");
+            gridBtn.disabled = false;
+        }, 5000);
+    }
 
-        // keep only last 5 entries
-        plant.wateringHistory = plant.wateringHistory.slice(-5);
+    // Save data immediately for grid flow
+    await savePlant(cleanPlant(plant));
 
-        await savePlant(cleanPlant(plant));
-    }, 300);
-
-    // re-render AFTER animation finishes
+    // Sync attention section (no animation)
     setTimeout(() => {
-        if (navigator.vibrate) {
-            // Trigger completion pop!
-            navigator.vibrate([50, 50, 50]);
-        }
-        // Remove card ONLY if there are others (prevents jitter on last card)
-        const card = document.querySelector(`.plant-card-large[data-id="${id}"]`);
-        const remaining = document.querySelectorAll("#attention-plants .plant-card-large");
-
-        if (card && card.parentNode && remaining.length > 1) {
-            card.parentNode.removeChild(card);
-        }
-
         renderAttentionPlants();
-        renderAllPlants();
-
-    }, 3500);
+    }, 300);
 }
 
 function getImageBase64(file) {
@@ -762,6 +1146,7 @@ function getImageBase64(file) {
             const ctx = canvas.getContext("2d");
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+            // Refined compression: JPEG with 0.7 quality
             const compressed = canvas.toDataURL("image/jpeg", 0.7);
 
             URL.revokeObjectURL(url);
@@ -847,4 +1232,22 @@ if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
         navigator.serviceWorker.register("sw.js");
     });
+}
+
+function renderComments(plant) {
+    const container = document.getElementById("view-comments");
+    if (!container) return;
+
+    if (!plant.comments || plant.comments.length === 0) {
+        container.innerHTML = "<p style='opacity:0.5;'>No notes yet</p>";
+        return;
+    }
+
+    const recent = [...plant.comments].slice(-5).reverse();
+    container.innerHTML = recent.map(c => `
+        <div>
+            <strong>${c.date}</strong>
+            <span>${c.text}</span>
+        </div>
+    `).join("");
 }

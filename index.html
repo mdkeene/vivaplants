@@ -37,45 +37,161 @@
 
     <div class="bottom-dock" style="flex-direction: column; align-items: center;">
         <div id="first-plant-tooltip" class="tooltip hidden">Add your first plant 🌿</div>
+        
         <button id="add-plant-btn" class="fab">+</button>
     </div>
 
     <div id="add-plant-modal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Add a Plant</h3>
-                <button id="close-modal-btn" class="close-btn">&times;</button>
+                <h3>Plant Details</h3>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button id="toggle-edit-mode" class="edit-toggle-btn">Edit</button>
+                    <button id="close-modal-btn" class="close-btn">&times;</button>
+                </div>
             </div>
             <p class="modal-subtitle">Keep track of a new green friend.</p>
 
-            <label class="modal-label">Image</label>
-            <div class="photo-buttons">
-                <button id="btn-choose-photo" class="btn-outline btn-choose">Choose image</button>
-                <button id="btn-take-photo" class="btn-outline btn-camera" title="Take photo">📷</button>
+            <!-- 1. IMPORT SECTION -->
+            <div class="modal-section subtle edit-mode-only">
+                <button id="import-plants-btn" class="btn-outline" style="width:100%;">
+                    Import plants from file
+                </button>
+                <input type="file" id="import-plants-input" accept="application/json" style="display:none;" />
             </div>
-            <input id="plant-image-file" type="file" accept="image/*" class="modal-input" style="display: none;" />
-            <img id="image-preview" class="image-preview hidden" alt="Image preview" />
 
-            <label class="modal-label">Name & Location</label>
-            <input id="plant-name" placeholder="Plant name (e.g. Fiddle Leaf Fig)" class="modal-input" />
-            <input id="plant-location" placeholder="Location (e.g. Living Room)" class="modal-input" />
+            <!-- 2. BASIC INFO SECTION -->
+            <div class="modal-section">
+                <h4 class="section-header">Basic Info</h4>
 
-            <label class="modal-label">Details</label>
-            <input id="plant-type" placeholder="Plant type (e.g. Succulent)" class="modal-input" />
-            <label class="modal-label">Soil preference</label>
-            <select id="plant-preference" class="modal-input">
-                <option value="" disabled selected>Select preference</option>
-                <option value="moist">Keep soil slightly moist (💧)</option>
-                <option value="moderate">Let top soil dry out (🪴)</option>
-                <option value="dry">Allow soil to fully dry (🌵)</option>
-            </select>
-            <p class="modal-helper">This helps you decide when to water when the reminder appears.</p>
+                <div class="edit-mode-only">
+                    <label class="modal-label">Image</label>
+                    <div class="photo-buttons">
+                        <button id="btn-choose-photo" class="btn-outline btn-choose">Choose image</button>
+                        <button id="btn-take-photo" class="btn-outline btn-camera" title="Take photo">📷</button>
+                    </div>
+                </div>
+                <input id="plant-image-file" type="file" accept="image/*" style="display: none;" />
+                <img id="image-preview" class="image-preview hidden" alt="Image preview" />
 
-            <label class="modal-label">How often should this plant be watered?</label>
-            <input id="plant-frequency" type="number" placeholder="Water every X days" class="modal-input" />
+                <div class="edit-mode-only">
+                    <label class="modal-label">Name & Location</label>
+                    <input id="plant-name" placeholder="Plant name (e.g. Fiddle Leaf Fig)" class="modal-input" />
+                    <input id="plant-location" placeholder="Location (e.g. Living Room)" class="modal-input" />
+                </div>
 
-            <label class="modal-label">Last Watered</label>
-            <input id="plant-last-watered" type="date" class="modal-input" />
+                <h2 id="view-plant-name" class="modal-view-title text-primary"></h2>
+                <p id="view-plant-status" class="modal-view-status"></p>
+                <p id="view-plant-location" class="modal-view-text"></p>
+            </div>
+
+            <!-- 3. CARE SETUP SECTION -->
+            <div class="modal-section">
+                <h4 class="section-header">Care Setup</h4>
+
+                <div class="edit-mode-only">
+                    <select id="plant-type" class="modal-input">
+                        <option value="" disabled selected>Select plant type</option>
+                        <!-- Filled from PLANT_LIBRARY in JS -->
+                    </select>
+                    <div id="custom-type-container" class="modal-input hidden" style="margin-top: -12px;">
+                        <input id="plant-custom-type" placeholder="Custom plant type (e.g. Rare Succulent)" class="modal-input" style="margin-bottom: 0;" />
+                    </div>
+                </div>
+                
+                <p id="view-plant-type" class="modal-view-text strong"></p>
+
+                <div id="care-guide-section" class="modal-view-text" style="display: none; margin-top: -12px; margin-bottom: 24px;">
+                    <button id="toggle-care-guide" class="btn-text" style="font-size: 0.85rem; padding: 0; margin-bottom: 8px; color: var(--primary-green); cursor: pointer; border: none; background: none; font-weight: 600;">
+                        Check Care Tips ▾
+                    </button>
+                    <div id="care-guide-content" class="hidden" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; padding-left: 4px; border-left: 2px solid rgba(0,0,0,0.03);">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Insights Layer -->
+                <div id="insights-section" class="insights-section hidden">
+                    <h4 class="section-header" style="color: var(--accent-green); opacity: 0.8; margin-bottom: 12px;">Insights</h4>
+                    <ul id="view-insights-list" style="list-style: none; padding: 0; margin: 0;">
+                        <!-- Filled by JS -->
+                    </ul>
+                </div>
+
+                <div class="edit-mode-only">
+                    <select id="plant-preference" class="modal-input">
+                        <option value="" disabled selected>Select preference</option>
+                        <option value="moist">Keep soil slightly moist (💧)</option>
+                        <option value="moderate">Let top soil dry out (🪴)</option>
+                        <option value="dry">Allow soil to fully dry (🌵)</option>
+                    </select>
+                    <p class="modal-helper">This helps you decide when to water when the reminder appears.</p>
+                    <input id="plant-frequency" type="number" placeholder="Water every X days" class="modal-input" />
+                </div>
+
+                <p id="view-plant-preference" class="modal-view-text"></p>
+                <p id="view-plant-frequency" class="modal-view-text"></p>
+            </div>
+
+            <!-- 4. TRACKING SECTION -->
+            <div class="modal-section divided">
+                <h4 class="section-header">Tracking</h4>
+
+                <div class="edit-mode-only">
+                    <label class="modal-label">Last Watered</label>
+                    <input id="plant-last-watered" type="date" class="modal-input" />
+                </div>
+                <p id="view-plant-last-watered" class="modal-view-text"></p>
+
+                <div class="edit-mode-only">
+                    <label class="modal-label">Light readings</label>
+                    <div class="light-input-row">
+                        <select id="light-time">
+                            <option value="Morning">Morning</option>
+                            <option value="Noon">Noon</option>
+                            <option value="Afternoon">Afternoon</option>
+                        </select>
+                        <input id="light-lux" type="number" placeholder="Lx">
+                        <button id="add-light-btn" class="btn-outline" style="min-width: 44px; padding: 10px 0;">+</button>
+                    </div>
+                </div>
+                <div id="view-light-history" class="modal-view-text" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; margin-top: 8px;"></div>
+
+                <div class="edit-mode-only">
+                    <label class="modal-label">Progress photos</label>
+                    <div class="modal-input" style="margin-bottom: 24px;">
+                        <button id="add-progress-btn" class="btn-outline" style="width: 100%;">Add Progress Photo</button>
+                        <input type="file" id="progress-photo-input" capture="environment" accept="image/*" style="display: none;" />
+                    </div>
+                </div>
+                <div id="view-progress-photos" class="modal-view-text"></div>
+            </div>
+
+            <!-- 5. NOTES SECTION -->
+            <div class="modal-section divided">
+                <h4 class="section-header">Notes</h4>
+
+                <button id="add-comment-btn" class="btn-outline">Add Note</button>
+
+                <div class="edit-mode-only" style="margin-top: 8px;">
+                     <input id="plant-comment-input" class="modal-input" placeholder="Add a note..." />
+                </div>
+
+                <div id="view-comments" class="modal-view-text" style="margin-top:12px; margin-bottom: 24px;"></div>
+            </div>
+
+            <!-- 6. HISTORY SECTION -->
+            <div class="modal-section subtle divided">
+                <h4 class="section-header">History</h4>
+
+                <div class="history-section">
+                    <h4>Recent care</h4>
+                    <ul id="watering-history-list"></ul>
+                    <p id="watering-average"></p>
+                </div>
+            </div>
+
+            <button id="copy-plant-report-btn" class="btn-outline modal-view-text" style="width: 100%; margin-top: 24px;">Copy Plant Report</button>
 
             <button id="save-plant" class="btn-primary">Save Plant</button>
             <button id="delete-plant-btn" class="btn-secondary" style="display: none;">Delete Plant</button>

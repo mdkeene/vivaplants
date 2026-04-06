@@ -1172,6 +1172,184 @@ section:last-of-type {
     animation: cardEntrance 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
+.modal-view-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.modal-view-status {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent-green);
+    margin-bottom: 24px;
+    display: block;
+}
+
+.modal-view-text {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 400;
+    margin-bottom: 12px;
+    line-height: 1.4;
+    display: block;
+}
+
+/* Grouped Watering styling */
+#view-plant-frequency,
+#view-plant-last-watered {
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+
+#view-plant-last-watered {
+    margin-bottom: 24px;
+}
+
+.modal-subtitle {
+    margin-bottom: 12px;
+}
+
+/* Default View Mode Hide/Show */
+.modal-label,
+.modal-input,
+.photo-buttons,
+.modal-helper,
+#save-plant,
+#delete-plant-btn {
+    display: none !important;
+}
+
+/* Edit Mode Inversion */
+.edit-mode .modal-label,
+.edit-mode .modal-input {
+    display: block !important;
+}
+.edit-mode select.modal-input {
+    display: block !important;
+}
+.edit-mode .photo-buttons {
+    display: flex !important;
+}
+.edit-mode .modal-helper {
+    display: block !important;
+}
+.edit-mode #save-plant {
+    display: block !important;
+}
+.edit-mode #delete-plant-btn {
+    display: block !important;
+}
+.edit-mode .modal-view-title,
+.edit-mode .modal-view-status,
+.edit-mode .modal-view-text {
+    display: none !important;
+}
+
+/* Toggle Button Styling */
+.edit-toggle-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-primary);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.edit-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.edit-toggle-btn:active {
+    transform: translateY(0) scale(0.95);
+}
+
+.light-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+}
+
+.light-input-row select,
+.light-input-row input {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    min-width: 0;
+}
+
+.light-input-row select {
+    flex: 1;
+}
+
+.light-input-row input {
+    width: 65px; /* Compact fixed width for 4-5 digits */
+    flex: none;
+}
+
+.light-input-row .btn-outline {
+    width: 44px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+.light-input-row .btn-outline:hover {
+    opacity: 1;
+}
+
+#view-light-history {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+#view-light-history div {
+    margin-bottom: 4px;
+}
+
+#view-progress-photos {
+    margin-bottom: 32px;
+}
+
+.progress-hero {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    border-radius: 16px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.progress-thumbs {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+}
+
+.progress-thumb {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 10px;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
 .empty-state h3 {
     font-size: 1.3rem;
     margin-bottom: 8px;
@@ -1179,10 +1357,164 @@ section:last-of-type {
     font-weight: 600;
     letter-spacing: -0.4px;
 }
+.history-section {
+    margin-top: 24px;
+    margin-bottom: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-.empty-state p {
-    font-size: 1rem;
-    opacity: 0.55;
+.history-section h4 {
+    font-size: 0.9rem;
     color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#watering-history-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 8px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+#watering-history-list li {
+    font-size: 0.95rem;
+    padding: 4px 0;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#watering-average {
+    font-size: 0.85rem;
+    color: var(--accent-green);
+    font-weight: 500;
+}
+.empty-state p {
     line-height: 1.4;
+}
+
+/* Insights Section */
+.insights-section {
+    margin-top: 24px;
+    margin-bottom: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.insights-section ul li {
+    margin-bottom: 8px;
+    padding-left: 18px;
+    position: relative;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.insights-section ul li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--accent-green);
+    font-weight: bold;
+}
+
+/* Modal Section Styling */
+.modal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+    border-top: none;
+    padding-top: 0;
+}
+
+.modal-section:first-of-type {
+    margin-top: 0;
+}
+
+.modal-section.divided {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 16px;
+    margin-top: 28px;
+}
+
+.modal-section.subtle {
+    opacity: 0.8;
+}
+
+.section-header {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
+
+.modal-label {
+    margin-top: 8px;
+}
+
+.modal-input {
+    border-radius: 10px;
+}
+
+.modal-view-text.strong {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal-view-text {
+    margin-bottom: 6px;
+}
+
+#view-comments div {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+#view-comments strong {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+#view-comments span {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+#import-plants-btn {
+    display: none;
+    opacity: 0.7;
+    font-size: 0.9rem;
+}
+
+.edit-mode #import-plants-btn {
+    display: block;
+}
+
+#import-plants-btn:hover {
+    opacity: 1;
+}
+
+#add-comment-btn {
+    margin-top: 6px;
+    opacity: 0.75;
+}
+
+#view-light-history {
+    opacity: 0.85;
+}
+
+.insights-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.insights-section ul li {
+    opacity: 0.85;
 }
