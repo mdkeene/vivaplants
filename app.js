@@ -226,19 +226,32 @@ function getPlantStatus(plant) {
 
 function renderAllPlants() {
     const container = document.getElementById("all-plants-grid");
-    container.innerHTML = "";
+    
+    // Get existing cards to reuse
+    const existingCards = new Map();
+    Array.from(container.children).forEach(child => {
+        if (child.dataset.id) existingCards.set(child.dataset.id, child);
+    });
 
-    plants.forEach(plant => {
-        const card = document.createElement("article");
-        card.className = "plant-card-small";
+    const newIds = new Set(plants.map(p => p.id));
 
+    // Remove cards not in the new list (e.g. deleted)
+    existingCards.forEach((card, id) => {
+        if (!newIds.has(id)) container.removeChild(card);
+    });
+
+    plants.forEach((plant, index) => {
         const status = getPlantStatus(plant);
         let statusClass = "text-ok";
         let nextWaterText = "";
 
         const daysLeft = getDaysUntilNextCheck(plant);
+        const isRecentlyWatered = (plant.lastWateredTimestamp && (Date.now() - plant.lastWateredTimestamp < 120000));
 
-        if (daysLeft === null) {
+        if (isRecentlyWatered) {
+            statusClass = "text-ok";
+            nextWaterText = "Just watered 🌿";
+        } else if (daysLeft === null) {
             nextWaterText = "No schedule set";
         } else if (daysLeft <= 0) {
             statusClass = "text-danger";
@@ -250,16 +263,30 @@ function renderAllPlants() {
             nextWaterText = `Check in ${daysLeft} days`;
         }
 
-        let prefDisplay = "";
-        if (plant.preference === "moist") prefDisplay = "moist";
-        if (plant.preference === "moderate") prefDisplay = "moderate";
-        if (plant.preference === "dry") prefDisplay = "dry";
+        let card = existingCards.get(plant.id);
+        const isNew = !card;
+
+        if (isNew) {
+            card = document.createElement("article");
+            card.className = "plant-card-small";
+            card.dataset.id = plant.id;
+        }
+
+        card.style.setProperty("--d", index);
+
+        // Suppress entry animation if already exists
+        if (!isNew) {
+            card.style.animation = "none";
+        } else {
+            card.style.animation = ""; 
+        }
 
         card.innerHTML = `
             <img src="${plant.image}" class="card-image" alt="${plant.name}" loading="lazy">
             <div class="card-content">
-                <div class="grid-card-header" style="align-items: center;">
+                <div class="grid-card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <h3 class="plant-name">${plant.name}</h3>
+                    <button class="grid-water-btn" onclick="waterPlant('${plant.id}', event)"><span class="icon">💧</span></button>
                 </div>
                 <p class="plant-meta">
                     ${plant.location}<br>
@@ -270,7 +297,9 @@ function renderAllPlants() {
 
         card.onclick = (e) => editPlant(plant.id, e);
 
-        container.appendChild(card);
+        if (isNew) {
+            container.appendChild(card);
+        }
     });
 }
 
@@ -288,84 +317,132 @@ let plantIdToHighlight = null;
 
 function renderAttentionPlants() {
     const container = document.getElementById("attention-plants");
-    container.innerHTML = "";
-
     const attentionPlants = getPlantsNeedingAttention();
     const section = container.closest("section");
     const subtitle = document.querySelector(".subtitle");
     const currentCount = attentionPlants.length;
 
-    if (currentCount === 0) {
-        section.style.display = "none";
-        subtitle.innerHTML = "All set for today 🌿<br><span style='font-size: 0.9em; opacity: 0.8;'>Your plants are happy and taken care of.</span>";
+    // Always ensure section is visible and not faded
+    section.style.display = "block";
+    section.style.maxHeight = "none";
+    section.classList.remove("fade-out");
 
-        // trigger celebration animation
+    if (currentCount === 0) {
+        subtitle.textContent = "Nothing needs attention right now";
+        // Only set innerHTML if not already in empty state to avoid resetting animation
+        if (!container.querySelector(".empty-state")) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>All set for today 🌿</h3>
+                    <p>Your plants are happy and taken care of.</p>
+                </div>
+            `;
+        }
+
+        // trigger celebration animation if coming from a non-zero state
         if (previousAttentionCount > 0) {
             subtitle.classList.remove("celebrate");
             void subtitle.offsetWidth; // trigger reflow
             subtitle.classList.add("celebrate");
-
             if (navigator.vibrate) navigator.vibrate(30);
         }
     } else {
-        section.style.display = "block";
         const word = currentCount === 1 ? "plant needs" : "plants need";
         subtitle.textContent = `${currentCount} ${word} attention today`;
+        
+        // Remove empty state if it exists
+        const empty = container.querySelector(".empty-state");
+        if (empty) container.removeChild(empty);
     }
+
+    const existingCards = new Map();
+    Array.from(container.children).forEach(child => {
+        if (child.dataset.id) existingCards.set(child.dataset.id, child);
+    });
+
+    const newIds = new Set(attentionPlants.map(p => p.id));
+
+    // Remove cards not in the new list
+    existingCards.forEach((card, id) => {
+        if (!newIds.has(id)) {
+            container.removeChild(card);
+        }
+    });
 
     previousAttentionCount = currentCount;
 
-    attentionPlants.forEach(plant => {
+    attentionPlants.forEach((plant, index) => {
         let instructions = "";
         if (plant.preference === "moist") instructions = "Keep soil slightly moist 💧";
         if (plant.preference === "moderate") instructions = "Let top soil dry out 🪴";
         if (plant.preference === "dry") instructions = "Allow soil to fully dry 🌵";
 
         const isJustWatered = plant.justWatered;
-        const status = getPlantStatus(plant);
+        const avg = getAverageWateringInterval(plant);
+        let memoryText = "";
 
+        if (plant.frequency && avg && Math.abs(avg - plant.frequency) >= 2) {
+            memoryText = `You usually water every ~${avg} days`;
+        }
+
+        const status = getPlantStatus(plant);
         const badgeClass = "status-badge danger";
         const badgeText = isJustWatered ? "Done" : "Needs attention";
 
-        const card = document.createElement("article");
-        card.className = "plant-card-large";
-        card.dataset.id = plant.id;
+        let card = existingCards.get(plant.id);
+        const isNew = !card;
 
-        if (plant.id === plantIdToHighlight) {
+        if (isNew) {
+            card = document.createElement("article");
+            card.className = "plant-card-large";
+            card.dataset.id = plant.id;
+        }
+
+        // Always update the stagger index for positioning
+        card.style.setProperty("--d", index);
+
+        // If it's not new, suppress the entrance animation so it just slides
+        if (!isNew) {
+            card.style.animation = "none";
+        } else {
+            card.style.animation = ""; 
+        }
+
+        const highlightClass = (plant.id === plantIdToHighlight) ? "highlight-next" : "";
+        if (highlightClass) {
             card.classList.add("highlight-next");
-            setTimeout(() => {
-                if (card && card.parentNode) card.classList.remove("highlight-next");
-            }, 4500);
+            setTimeout(() => card.classList.remove("highlight-next"), 4500);
             plantIdToHighlight = null;
         }
 
-        if (isJustWatered) {
-            card.classList.add("watering");
-        }
+        if (isJustWatered) card.classList.add("watering");
+        else card.classList.remove("watering");
 
-        card.innerHTML = `
+        const contentHtml = `
         <img src="${plant.image}" class="card-image" alt="${plant.name}" loading="lazy">
-
         <div class="water-overlay"></div>
-
         <div class="card-overlay">
-            ${!isJustWatered ? `<span class="${badgeClass} ${isJustWatered ? 'fade-out' : ''}"> ${badgeText} </span>` : ""}
-
+            ${!isJustWatered ? `<span class="${badgeClass}"> ${badgeText} </span>` : ""}
             <div class="card-content">
                 <div>
                     <h3 class="plant-name">${plant.name}</h3>
                     ${!isJustWatered && instructions ? `<p class="plant-instruction" style="color: #ffffff; font-size: 1rem; font-weight: 500; margin-bottom: 4px; text-shadow: 0 1px 4px rgba(0,0,0,0.6); opacity: 0.95;">${instructions}</p>` : ""}
+                    ${memoryText ? `<p class="plant-memory" style="color: #ffffff; font-size: 0.85rem; opacity: 0.85; margin-bottom: 4px; font-weight: 500;">${memoryText}</p>` : ""}
                     <p class="plant-meta" style="margin-bottom: 4px; opacity: 0.85; font-size: 0.8rem;">
-                        ${isJustWatered ? "Just watered 🌿" : `Last watered ${daysSinceDate(plant.lastWatered)} days ago`}
+                        ${(plant.lastWateredTimestamp && (Date.now() - plant.lastWateredTimestamp < 120000)) ? "Just watered 🌿" : `Last watered ${daysSinceDate(plant.lastWatered)} days ago`}
                     </p>
                     ${!isJustWatered ? `<button class="delay-btn" onclick="delayPlant('${plant.id}', event)">Check in 2 days</button>` : ""}
                 </div>
-                ${!isJustWatered ? `<button class="action-btn ${isJustWatered ? 'fade-out' : ''}" onclick="waterPlant('${plant.id}', event)">💧</button>` : ""}
+                ${!isJustWatered ? `<button class="action-btn" onclick="waterPlant('${plant.id}', event)">💧</button>` : ""}
             </div>
         </div>
         `;
 
-        container.appendChild(card);
+        card.innerHTML = contentHtml;
+
+        if (isNew) {
+            container.appendChild(card);
+        }
     });
 }
 
@@ -480,6 +557,129 @@ function addWaterFeedbackAndHighlightNext(card, plant) {
 
 function waterPlant(id, event) {
     if (event) event.stopPropagation();
+
+    const isAttentionCard = event?.target?.closest(".plant-card-large");
+
+    if (!isAttentionCard) {
+        const plant = plants.find(p => p.id === id);
+        if (!plant) return;
+
+        if (navigator.vibrate) navigator.vibrate(15);
+
+        const today = new Date().toISOString().split("T")[0];
+        plant.lastWatered = today;
+        plant.lastWateredTimestamp = Date.now();
+
+        if (!plant.wateringHistory) {
+            plant.wateringHistory = [];
+        }
+
+        plant.wateringHistory.push(today);
+        plant.wateringHistory = plant.wateringHistory.slice(-5);
+
+        delete plant.skipUntil;
+
+        savePlant(cleanPlant(plant));
+
+        const btn = event?.target?.closest(".grid-water-btn");
+        if (btn) {
+            btn.classList.add("active");
+            const icon = btn.querySelector(".icon");
+
+            if (icon) {
+                icon.textContent = "✓";
+                icon.style.color = "white";
+                icon.style.fontWeight = "bold";
+                icon.style.fontSize = "1.2rem";
+            }
+
+            btn.disabled = true;
+
+            // Surgically update the status label in the grid card
+            const gridCard = btn.closest(".plant-card-small");
+            if (gridCard) {
+                const statusSpan = gridCard.querySelector(".status-strong");
+                if (statusSpan) {
+                    statusSpan.textContent = "Just watered 🌿";
+                    statusSpan.className = "status-strong text-ok";
+                }
+            }
+
+            setTimeout(() => {
+                if (icon) {
+                    icon.textContent = "💧";
+                    icon.style.color = "";
+                    icon.style.fontWeight = "";
+                    icon.style.fontSize = "";
+                }
+                btn.classList.remove("active");
+                btn.disabled = false;
+            }, 5000);
+        }
+
+        // Smoothly remove from attention if it exists there
+        const attentionCard = document.querySelector(`.plant-card-large[data-id="${id}"]`);
+        if (attentionCard) {
+            const attentionSection = document.querySelector("#attention-plants")?.closest("section");
+            const allPlantsSection = document.querySelector("#all-plants-grid")?.closest("section");
+            
+            // 1. Initial Anim: fade the card out
+            attentionCard.classList.add("attention-exit");
+            
+            setTimeout(() => {
+                if (!attentionSection) {
+                    renderAttentionPlants();
+                    return;
+                }
+
+                // 2. Capture "Before" state
+                const oldHeight = attentionSection.offsetHeight;
+                const oldGridRect = allPlantsSection?.getBoundingClientRect();
+                
+                // 3. Update DOM
+                renderAttentionPlants();
+                
+                // 4. Capture "After" state
+                const newHeight = attentionSection.scrollHeight;
+                
+                // 5. Coordinated Transition
+                // Lock height to old and transform grid to old position
+                attentionSection.style.height = oldHeight + "px";
+                if (allPlantsSection && oldGridRect) {
+                    const newGridRect = allPlantsSection.getBoundingClientRect();
+                    const diffY = oldGridRect.top - newGridRect.top;
+                    allPlantsSection.style.transform = `translateY(${diffY}px)`;
+                    allPlantsSection.style.transition = "none"; 
+                }
+
+                // Force reflow
+                void attentionSection.offsetWidth;
+
+                // Trigger smooth slide
+                attentionSection.style.height = (newHeight > 0 ? newHeight : 0) + "px";
+                if (allPlantsSection) {
+                    allPlantsSection.classList.add("waterfall-slide");
+                    allPlantsSection.style.transform = "translateY(0)";
+                }
+
+                // 6. Cleanup after 800ms (match CSS)
+                setTimeout(() => {
+                    attentionSection.style.height = "";
+                    if (allPlantsSection) {
+                        allPlantsSection.classList.remove("waterfall-slide");
+                        allPlantsSection.style.transform = "";
+                        allPlantsSection.style.transition = "";
+                    }
+                }, 800);
+
+            }, 550); 
+        } else {
+            renderAttentionPlants();
+        }
+
+        return;
+    }
+
     const plant = plants.find(p => p.id === id);
     if (!plant) return;
 
@@ -509,8 +709,20 @@ function waterPlant(id, event) {
 
     // update data slightly later
     setTimeout(async () => {
-        plant.lastWatered = new Date().toISOString().split("T")[0];
-        await savePlant(cleanPlant(plant)); // 🔥 important
+        const today = new Date().toISOString().split("T")[0];
+        plant.lastWatered = today;
+        plant.lastWateredTimestamp = Date.now();
+
+        if (!plant.wateringHistory) {
+            plant.wateringHistory = [];
+        }
+
+        plant.wateringHistory.push(today);
+
+        // keep only last 5 entries
+        plant.wateringHistory = plant.wateringHistory.slice(-5);
+
+        await savePlant(cleanPlant(plant));
     }, 300);
 
     // re-render AFTER animation finishes
@@ -519,16 +731,16 @@ function waterPlant(id, event) {
             // Trigger completion pop!
             navigator.vibrate([50, 50, 50]);
         }
-        plant.justWatered = false;
+        // Remove card ONLY if there are others (prevents jitter on last card)
+        const card = document.querySelector(`.plant-card-large[data-id="${id}"]`);
+        const remaining = document.querySelectorAll("#attention-plants .plant-card-large");
 
-        // Remove only this card
-        const card = document.querySelector(`[data-id="${id}"]`);
-        if (card && card.parentNode) {
+        if (card && card.parentNode && remaining.length > 1) {
             card.parentNode.removeChild(card);
         }
 
-        // Update subtitle + section state
         renderAttentionPlants();
+        renderAllPlants();
 
     }, 3500);
 }
@@ -563,6 +775,32 @@ function getImageBase64(file) {
 function cleanPlant(plant) {
     const { justWatered, ...clean } = plant;
     return clean;
+}
+
+function getAverageWateringInterval(plant) {
+    if (!plant.wateringHistory || plant.wateringHistory.length < 2) {
+        return null;
+    }
+
+    let intervals = [];
+
+    for (let i = 1; i < plant.wateringHistory.length; i++) {
+        const prev = plant.wateringHistory[i - 1];
+        const curr = plant.wateringHistory[i];
+
+        const prevDate = new Date(prev);
+        const currDate = new Date(curr);
+
+        const diffTime = currDate - prevDate;
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        intervals.push(diffDays);
+    }
+
+    if (intervals.length === 0) return null;
+
+    const sum = intervals.reduce((a, b) => a + b, 0);
+    return Math.round(sum / intervals.length);
 }
 
 // --- PWA Pull Struggle Effect ---

@@ -77,8 +77,8 @@ header {
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     margin-bottom: 32px;
-    box-shadow: 
-        0 16px 40px rgba(0, 0, 0, 0.25), 
+    box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.25),
         inset 0 1px 0 rgba(255, 255, 255, 0.3);
     position: relative;
     overflow: hidden;
@@ -87,7 +87,10 @@ header {
 header::after {
     content: "";
     position: absolute;
-    top: 0; left: 0; width: 100%; height: 80%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 80%;
     background: radial-gradient(ellipse at top, rgba(168, 203, 183, 0.15), transparent 70%);
     pointer-events: none;
 }
@@ -207,9 +210,23 @@ h1 {
         opacity: 0;
         transform: translateY(6px);
     }
+
     100% {
         opacity: 0.9;
         transform: translateY(0);
+    }
+}
+
+@keyframes cardEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.9);
+        filter: blur(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
     }
 }
 
@@ -231,6 +248,27 @@ section {
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.05);
     margin-bottom: 28px;
+    overflow: hidden;
+    transition:
+        opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+        height 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+        max-height 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+        margin-bottom 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+        transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+        padding 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.waterfall-slide {
+    transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+section.fade-out {
+    opacity: 0 !important;
+    max-height: 0 !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+    transform: translateY(-25px) !important;
+    pointer-events: none;
 }
 
 section:first-of-type {
@@ -437,7 +475,7 @@ section:last-of-type {
 
 .action-btn:hover {
     background: rgba(255, 255, 255, 0.95);
-    box-shadow: 
+    box-shadow:
         0 12px 24px rgba(0, 0, 0, 0.4),
         0 0 24px rgba(255, 255, 255, 0.3);
 }
@@ -465,14 +503,28 @@ section:last-of-type {
     -webkit-backdrop-filter: blur(6px);
     border: 1px solid rgba(255, 255, 255, 0.15);
     cursor: pointer;
-    transition: var(--transition);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    animation: cardEntrance 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: calc(var(--d, 0) * 60ms);
     /* Ensure clipping doesn't break rounded corners in safari */
     -webkit-mask-image: -webkit-radial-gradient(white, black);
     mask-image: radial-gradient(white, black);
 }
 
+@keyframes cardEntrance {
+    0% {
+        opacity: 0;
+        transform: translateY(40px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 .plant-card-small:active {
-    transform: scale(0.96);
+    transform: scale(0.975);
+    border-color: rgba(255, 255, 255, 0.25);
 }
 
 .plant-card-small .card-image {
@@ -488,6 +540,50 @@ section:last-of-type {
 
 .plant-card-small .card-content {
     padding: 12px;
+}
+
+.grid-water-btn {
+    background: #f0f4f2;
+    border: 1px solid #e0e6e2;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 6px;
+    flex-shrink: 0;
+    margin-left: 12px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.grid-water-btn.active {
+    background: #2ecc71 !important;
+    /* solid, hard emerald green */
+    transform: scale(1.15) !important;
+    border: 2px solid #27ae60 !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25) !important;
+    opacity: 1 !important;
+    color: white !important;
+}
+
+.grid-water-btn.active .icon {
+    /* remove any drop-shadow that could add fuzziness */
+    filter: none !important;
+    font-weight: 800 !important;
+}
+
+.grid-water-btn:hover {
+    background: #e8eee9;
+    border-color: #d0d8d2;
+    transform: scale(1.05);
+}
+
+.grid-water-btn:active {
+    transform: scale(0.95);
 }
 
 .plant-card-small .plant-name {
@@ -623,28 +719,57 @@ section:last-of-type {
     z-index: 20;
     opacity: 0;
     text-align: center;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
     animation: feedbackFadeInOut 3.2s ease forwards;
     pointer-events: none;
     border-radius: var(--radius-lg);
-    background: rgba(40, 80, 50, 0.35); /* added subtle background for contrast */
+    background: rgba(40, 80, 50, 0.35);
+    /* added subtle background for contrast */
 }
 
 @keyframes feedbackFadeInOut {
-    0% { opacity: 0; transform: translateY(8px); }
-    8% { opacity: 1; transform: translateY(0); }
-    92% { opacity: 1; transform: translateY(0); }
-    100% { opacity: 0; }
+    0% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    8% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    92% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+    }
 }
 
 @keyframes highlightNextOverlay {
-    0%, 100% { opacity: 0; }
-    50% { opacity: 1; }
+
+    0%,
+    100% {
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
 }
 
 @keyframes highlightNextScale {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.015); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.015);
+    }
 }
 
 .plant-card-large.highlight-next {
@@ -659,10 +784,10 @@ section:last-of-type {
     pointer-events: none;
     border: 3px solid var(--accent-green);
     border-radius: inherit;
-    background: rgba(127, 183, 126, 0.15); 
-    box-shadow: inset 0 0 30px rgba(127, 183, 126, 0.4); 
+    background: rgba(127, 183, 126, 0.15);
+    box-shadow: inset 0 0 30px rgba(127, 183, 126, 0.4);
     animation: highlightNextOverlay 1.5s ease-in-out infinite;
-    z-index: 50; 
+    z-index: 50;
 }
 
 .modal {
@@ -738,7 +863,8 @@ section:last-of-type {
     transition: color var(--transition-fast);
 }
 
-.close-btn:hover, .close-btn:active {
+.close-btn:hover,
+.close-btn:active {
     color: var(--text-primary);
 }
 
@@ -848,8 +974,15 @@ section:last-of-type {
 }
 
 @keyframes tooltipBounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-4px);
+    }
 }
 
 .tooltip {
@@ -900,15 +1033,18 @@ section:last-of-type {
 }
 
 .text-danger {
-    color: #E53935; /* clear strong red */
+    color: #E53935;
+    /* clear strong red */
 }
 
 .text-warning {
-    color: #F57C00; /* warm orange */
+    color: #F57C00;
+    /* warm orange */
 }
 
 .text-ok {
-    color: #388E3C; /* calm visible green */
+    color: #388E3C;
+    /* calm visible green */
 }
 
 .btn-secondary {
@@ -923,6 +1059,7 @@ section:last-of-type {
     margin-top: 4px;
     transition: transform 0.15s ease, background 0.15s ease;
 }
+
 .btn-secondary:active {
     transform: scale(0.96);
     background: rgba(255, 158, 158, 0.1);
@@ -946,7 +1083,8 @@ section:last-of-type {
     transition: all 0.15s ease;
 }
 
-.btn-outline:hover, .btn-outline:active {
+.btn-outline:hover,
+.btn-outline:active {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
 }
@@ -967,6 +1105,26 @@ section:last-of-type {
     font-size: 1.1rem;
 }
 
+.plant-card-large {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-low);
+    position: relative;
+    max-height: 1000px;
+    transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: cardEntrance 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation-delay: calc(var(--d, 0) * 80ms);
+}
+
+.plant-card-large:active {
+    transform: scale(0.97);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
 .delay-btn {
     background: rgba(255, 255, 255, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -982,11 +1140,49 @@ section:last-of-type {
     -webkit-backdrop-filter: blur(8px);
 }
 
-.delay-btn:hover, .delay-btn:active {
+.delay-btn:hover,
+.delay-btn:active {
     background: rgba(255, 255, 255, 0.25);
     color: var(--text-primary);
 }
 
 .delay-btn:active {
     transform: scale(0.95);
+}
+
+.attention-exit {
+    opacity: 0;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    transform: scale(0.94) translateY(-20px);
+    transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    pointer-events: none;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 0 40px rgba(120, 180, 140, 0.05);
+    margin: 12px 0;
+    animation: cardEntrance 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+.empty-state h3 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+    font-weight: 600;
+    letter-spacing: -0.4px;
+}
+
+.empty-state p {
+    font-size: 1rem;
+    opacity: 0.55;
+    color: var(--text-secondary);
+    line-height: 1.4;
 }
